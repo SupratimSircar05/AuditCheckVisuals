@@ -12,16 +12,18 @@ engine = sqlalchemy.create_engine(
 period = 30  # in days
 
 # Step 2: Calculate the date 'period days' away from today
-duration = datetime.now() - timedelta(days=period - 1)
+duration = datetime.now() - timedelta(days=period)
 
 # Step 3: Retrieve the data for 'Detect and Locate' based on period
 query = f"""
 SELECT * FROM health.dnasofferStatus_new
 WHERE NAME = 'Detect and Locate'
 AND DATE >= '{duration.strftime('%Y-%m-%d %H:%M:%S')}'
+AND DATE <= '{(datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S')}'
 ORDER BY DATE DESC;
 """
 df = pd.read_sql(query, engine)
+
 
 # Step 4: Parse the 'reason' column
 def parse_reason(reason):
@@ -39,6 +41,7 @@ def parse_reason(reason):
             "BLE_Tags": None
         }
 
+
 df["parsed_reason"] = df["reason"].apply(parse_reason)
 df = pd.concat(
     [df.drop(["reason"], axis=1), df["parsed_reason"].apply(pd.Series)], axis=1
@@ -49,7 +52,7 @@ df['date'] = pd.to_datetime(df['date'])
 
 # Step 5: Create a Streamlit dashboard
 st.title(
-    f"Firehose Data Pipeline ({period} days)\nPeriod: {duration.strftime('%Y-%m-%d')} to {datetime.now().strftime('%Y-%m-%d')}")
+    f"Firehose Data Pipeline ({period} days)\nPeriod: {duration.strftime('%Y-%m-%d')} to {(datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')}")
 
 # Calculate and display total runs
 total_runs = len(df)
@@ -98,6 +101,7 @@ daily_data = df.groupby('date')[["Clients_Device", "Tag_Device", "BLE_Tags"]].me
 # Get the list of unique dates to use as rows
 dates = daily_data.index.tolist()
 
+
 # Function to apply color based on value
 def color_cell(value):
     if value is None:
@@ -106,6 +110,7 @@ def color_cell(value):
         return "background-color: red"
     else:
         return "background-color: green"
+
 
 # Format the data as a string for Streamlit
 grid_output = ""
